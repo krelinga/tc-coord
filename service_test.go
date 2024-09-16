@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"errors"
 	"testing"
 
 	pb "buf.build/gen/go/krelinga/proto/protocolbuffers/go/krelinga/video/tccoord/v1"
@@ -52,6 +53,18 @@ func TestTcCoord(t *testing.T) {
 		}
 		if !cmp.Equal(resp.Msg, expected, protocmp.Transform()) {
 			t.Errorf("GetQueue returned unexpected response: %v", cmp.Diff(resp, expected, protocmp.Transform()))
+		}
+	})
+
+	t.Run("EnqueueDirReusedId", func(t *testing.T) {
+		_, err := service.EnqueueDir(context.Background(), &connect.Request[pb.EnqueueDirRequest]{
+			Msg: &pb.EnqueueDirRequest{
+				Id:  "testid",
+				Dir: "testdir",
+			},
+		})
+		if !errors.Is(err, errReusedId) {
+			t.Errorf("EnqueueDir did not return expected error: %v", err)
 		}
 	})
 }

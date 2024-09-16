@@ -7,6 +7,12 @@ import (
 
 	pb "buf.build/gen/go/krelinga/proto/protocolbuffers/go/krelinga/video/tccoord/v1"
 	"connectrpc.com/connect"
+	"google.golang.org/grpc/codes"
+	"google.golang.org/grpc/status"
+)
+
+var (
+	errReusedId = status.Error(codes.AlreadyExists, "id already in use")
 )
 
 type tcCoord struct {
@@ -20,6 +26,9 @@ func newTcCoord() *tcCoord {
 }
 
 func (server *tcCoord) EnqueueDir(ctx context.Context, req *connect.Request[pb.EnqueueDirRequest]) (*connect.Response[pb.EnqueueDirResponse], error) {
+	if _, alreadyExists := server.queue[req.Msg.Id]; alreadyExists {
+		return nil, errReusedId
+	}
 	server.queue[req.Msg.Id] = &pb.QueueEntry{
 		Id:  req.Msg.Id,
 		Dir: req.Msg.Dir,
