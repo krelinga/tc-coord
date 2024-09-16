@@ -12,7 +12,7 @@ import (
 
 func TestTcCoord(t *testing.T) {
 	// Create a new service instance
-	service := &tcCoord{}
+	service := newTcCoord()
 
 	t.Run("EmptyQueue", func(t *testing.T) {
 		resp, err := service.GetQueue(context.Background(), &connect.Request[pb.GetQueueRequest]{})
@@ -21,6 +21,34 @@ func TestTcCoord(t *testing.T) {
 		}
 		expected := &pb.GetQueueResponse{
 			Queue: []*pb.QueueEntry{},
+		}
+		if !cmp.Equal(resp.Msg, expected, protocmp.Transform()) {
+			t.Errorf("GetQueue returned unexpected response: %v", cmp.Diff(resp, expected, protocmp.Transform()))
+		}
+	})
+
+	t.Run("EnqueueDirUniqueId", func(t *testing.T) {
+		_, err := service.EnqueueDir(context.Background(), &connect.Request[pb.EnqueueDirRequest]{
+			Msg: &pb.EnqueueDirRequest{
+				Id:  "testid",
+				Dir: "testdir",
+			},
+		})
+		if err != nil {
+			t.Fatalf("EnqueueDir failed: %v", err)
+		}
+
+		resp, err := service.GetQueue(context.Background(), &connect.Request[pb.GetQueueRequest]{})
+		if err != nil {
+			t.Fatalf("GetQueue failed: %v", err)
+		}
+		expected := &pb.GetQueueResponse{
+			Queue: []*pb.QueueEntry{
+				{
+					Id:  "testid",
+					Dir: "testdir",
+				},
+			},
 		}
 		if !cmp.Equal(resp.Msg, expected, protocmp.Transform()) {
 			t.Errorf("GetQueue returned unexpected response: %v", cmp.Diff(resp, expected, protocmp.Transform()))

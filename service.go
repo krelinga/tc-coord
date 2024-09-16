@@ -10,14 +10,31 @@ import (
 )
 
 type tcCoord struct {
+	queue map[string]*pb.QueueEntry
+}
+
+func newTcCoord() *tcCoord {
+	return &tcCoord{
+		queue: make(map[string]*pb.QueueEntry),
+	}
 }
 
 func (server *tcCoord) EnqueueDir(ctx context.Context, req *connect.Request[pb.EnqueueDirRequest]) (*connect.Response[pb.EnqueueDirResponse], error) {
-	return nil, nil
+	server.queue[req.Msg.Id] = &pb.QueueEntry{
+		Id:  req.Msg.Id,
+		Dir: req.Msg.Dir,
+	}
+	return &connect.Response[pb.EnqueueDirResponse]{}, nil
 }
 
 func (server *tcCoord) GetQueue(ctx context.Context, req *connect.Request[pb.GetQueueRequest]) (*connect.Response[pb.GetQueueResponse], error) {
+	var queue []*pb.QueueEntry
+	for _, entry := range server.queue {
+		queue = append(queue, entry)
+	}
 	return &connect.Response[pb.GetQueueResponse]{
-		Msg: &pb.GetQueueResponse{},
+		Msg: &pb.GetQueueResponse{
+			Queue: queue,
+		},
 	}, nil
 }
