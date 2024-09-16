@@ -17,5 +17,7 @@ func (server *tcCoord) EnqueueDir(ctx context.Context, req *connect.Request[pb.E
 }
 
 func (server *tcCoord) GetQueue(ctx context.Context, req *connect.Request[pb.GetQueueRequest]) (*connect.Response[pb.GetQueueResponse], error) {
-	return nil, nil
+	return &connect.Response[pb.GetQueueResponse]{
+		Msg: &pb.GetQueueResponse{},
+	}, nil
 }
