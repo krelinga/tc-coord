@@ -1,0 +1,14 @@
+{
+    "version": "2.0.0",
+    "tasks": [
+        {
+            "label": "Run Mockery",
+            "type": "shell",
+            "command": "mockery",
+            "group": {
+                "kind": "build",
+            },
+            "problemMatcher": []
+        }
+    ]
+}
