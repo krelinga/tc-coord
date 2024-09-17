@@ -5,6 +5,7 @@ package main
 import (
 	"context"
 
+	be_rpc "buf.build/gen/go/krelinga/proto/connectrpc/go/krelinga/video/tcserver/v1/tcserverv1connect"
 	pb "buf.build/gen/go/krelinga/proto/protocolbuffers/go/krelinga/video/tccoord/v1"
 	"connectrpc.com/connect"
 	"google.golang.org/grpc/codes"
@@ -16,12 +17,14 @@ var (
 )
 
 type tcCoord struct {
-	queue map[string]*pb.QueueEntry
+	queue   map[string]*pb.QueueEntry
+	backend *be_rpc.TCServiceClient
 }
 
-func newTcCoord() *tcCoord {
+func newTcCoord(backend *be_rpc.TCServiceClient) *tcCoord {
 	return &tcCoord{
-		queue: make(map[string]*pb.QueueEntry),
+		queue:   make(map[string]*pb.QueueEntry),
+		backend: backend,
 	}
 }
 

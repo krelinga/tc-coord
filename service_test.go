@@ -13,7 +13,7 @@ import (
 
 func TestTcCoord(t *testing.T) {
 	// Create a new service instance
-	service := newTcCoord()
+	service := newTcCoord(nil)
 
 	t.Run("EmptyQueue", func(t *testing.T) {
 		resp, err := service.GetQueue(context.Background(), &connect.Request[pb.GetQueueRequest]{})
