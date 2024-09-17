@@ -7,6 +7,7 @@ import (
 
 	be_rpc "buf.build/gen/go/krelinga/proto/connectrpc/go/krelinga/video/tcserver/v1/tcserverv1connect"
 	pb "buf.build/gen/go/krelinga/proto/protocolbuffers/go/krelinga/video/tccoord/v1"
+	be_pb "buf.build/gen/go/krelinga/proto/protocolbuffers/go/krelinga/video/tcserver/v1"
 	"connectrpc.com/connect"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
@@ -36,7 +37,15 @@ func (server *tcCoord) EnqueueDir(ctx context.Context, req *connect.Request[pb.E
 		Id:  req.Msg.Id,
 		Dir: req.Msg.Dir,
 	}
-	return &connect.Response[pb.EnqueueDirResponse]{}, nil
+	_, err := server.backend.StartAsyncTranscode(ctx, &connect.Request[be_pb.StartAsyncTranscodeRequest]{
+		Msg: &be_pb.StartAsyncTranscodeRequest{
+			Name:   req.Msg.Id,
+			InPath: req.Msg.Dir, // TODO: set InPath correctly.
+			// TODO: set OutPath
+			// TODO: set profile
+		},
+	})
+	return &connect.Response[pb.EnqueueDirResponse]{}, err
 }
 
 func (server *tcCoord) GetQueue(ctx context.Context, req *connect.Request[pb.GetQueueRequest]) (*connect.Response[pb.GetQueueResponse], error) {

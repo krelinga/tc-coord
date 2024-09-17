@@ -5,15 +5,21 @@ import (
 	"errors"
 	"testing"
 
+	"github.com/stretchr/testify/mock"
+
 	pb "buf.build/gen/go/krelinga/proto/protocolbuffers/go/krelinga/video/tccoord/v1"
 	"connectrpc.com/connect"
 	"github.com/google/go-cmp/cmp"
+	"github.com/krelinga/tc-coord/internal/mocks"
 	"google.golang.org/protobuf/testing/protocmp"
 )
 
 func TestTcCoord(t *testing.T) {
+	mockBe := mocks.NewTCServiceClient(t)
+	mockBe.EXPECT().StartAsyncTranscode(mock.Anything, mock.Anything).Return(nil, nil).Maybe()
+
 	// Create a new service instance
-	service := newTcCoord(nil)
+	service := newTcCoord(mockBe)
 
 	t.Run("EmptyQueue", func(t *testing.T) {
 		resp, err := service.GetQueue(context.Background(), &connect.Request[pb.GetQueueRequest]{})
