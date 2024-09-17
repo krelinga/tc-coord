@@ -18,10 +18,10 @@ var (
 
 type tcCoord struct {
 	queue   map[string]*pb.QueueEntry
-	backend *be_rpc.TCServiceClient
+	backend be_rpc.TCServiceClient
 }
 
-func newTcCoord(backend *be_rpc.TCServiceClient) *tcCoord {
+func newTcCoord(backend be_rpc.TCServiceClient) *tcCoord {
 	return &tcCoord{
 		queue:   make(map[string]*pb.QueueEntry),
 		backend: backend,
