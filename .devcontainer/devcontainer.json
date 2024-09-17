@@ -1,7 +1,7 @@
 // For format details, see https://aka.ms/devcontainer.json. For config options, see the
 // README at: https://github.com/devcontainers/templates/tree/main/src/go
 
-// spell-checker:ignore devcontainers dhoeric
+// spell-checker:ignore devcontainers dhoeric brokeyourbike devcontainer
 
 {
 	"name": "Go",
@@ -9,7 +9,8 @@
 	"image": "mcr.microsoft.com/devcontainers/go:1-1.22-bookworm",
 	"features": {
 		"ghcr.io/devcontainers/features/docker-in-docker:2": {},
-		"ghcr.io/dhoeric/features/act:1": {}
+		"ghcr.io/dhoeric/features/act:1": {},
+		"ghcr.io/brokeyourbike/devcontainer-features/mockery-go:0": {}
 	},
 
 	// Features to add to the dev container. More info: https://containers.dev/features.
