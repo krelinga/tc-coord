@@ -1,0 +1,12 @@
+quiet: False
+keeptree: False
+disable-version-string: True
+with-expecter: True
+mockname: "{{.InterfaceName}}"
+filename: "{{.MockName}}.go"
+dir: internal/mocks
+outpkg: mocks
+packages:
+  buf.build/gen/go/krelinga/proto/connectrpc/go/krelinga/video/tcserver/v1/tcserverv1connect:
+    interfaces:
+      TCServiceClient:
