@@ -102,7 +102,7 @@ func TestTcCoord(t *testing.T) {
 	}
 
 	t.Run("EmptyQueue", func(t *testing.T) {
-		resp, err := service.GetQueue(context.Background(), &connect.Request[pb.GetQueueRequest]{})
+		resp, err := service.GetQueue(ctx, &connect.Request[pb.GetQueueRequest]{})
 		if err != nil {
 			t.Fatalf("GetQueue failed: %v", err)
 		}
@@ -113,7 +113,7 @@ func TestTcCoord(t *testing.T) {
 	testId := t.Name()
 
 	t.Run("EnqueueDirUniqueId", func(t *testing.T) {
-		_, err := service.EnqueueDir(context.Background(), &connect.Request[pb.EnqueueDirRequest]{
+		_, err := service.EnqueueDir(ctx, &connect.Request[pb.EnqueueDirRequest]{
 			Msg: &pb.EnqueueDirRequest{
 				Id:  testId,
 				Dir: tempDir,
@@ -124,7 +124,7 @@ func TestTcCoord(t *testing.T) {
 		}
 
 		workflowFinished := func(t *assert.CollectT) {
-			resp, err := service.GetQueue(context.Background(), &connect.Request[pb.GetQueueRequest]{})
+			resp, err := service.GetQueue(ctx, &connect.Request[pb.GetQueueRequest]{})
 			assert.NoError(t, err)
 			expected := &pb.GetQueueResponse{
 				Queue: []*pb.QueueEntry{
@@ -141,7 +141,7 @@ func TestTcCoord(t *testing.T) {
 	})
 
 	t.Run("EnqueueDirReusedId", func(t *testing.T) {
-		_, err := service.EnqueueDir(context.Background(), &connect.Request[pb.EnqueueDirRequest]{
+		_, err := service.EnqueueDir(ctx, &connect.Request[pb.EnqueueDirRequest]{
 			Msg: &pb.EnqueueDirRequest{
 				Id:  testId,
 				Dir: "testdir",
