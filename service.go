@@ -4,58 +4,84 @@ package main
 
 import (
 	"context"
+	"fmt"
+	"log"
 
-	be_rpc "buf.build/gen/go/krelinga/proto/connectrpc/go/krelinga/video/tcserver/v1/tcserverv1connect"
 	pb "buf.build/gen/go/krelinga/proto/protocolbuffers/go/krelinga/video/tccoord/v1"
-	be_pb "buf.build/gen/go/krelinga/proto/protocolbuffers/go/krelinga/video/tcserver/v1"
 	"connectrpc.com/connect"
+	"github.com/krelinga/tc-coord/internal/workflows"
+	temporal_enums "go.temporal.io/api/enums/v1"
+	"go.temporal.io/api/workflowservice/v1"
+	"go.temporal.io/sdk/client"
+	temporal_converter "go.temporal.io/sdk/converter"
+	"go.temporal.io/sdk/temporal"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 )
 
 var (
-	errReusedId = status.Error(codes.AlreadyExists, "id already in use")
+	errReusedId                 = status.Error(codes.AlreadyExists, "id already in use")
+	errQueueTooLarge            = status.Error(codes.Unimplemented, "queue too large")
+	errExecutionMissingDir      = status.Error(codes.Internal, "execution missing dir")
+	errExecutionCorruptDir      = status.Error(codes.Internal, "execution has corrupt dir")
+	errCouldNotCheckForReusedId = status.Error(codes.Internal, "could not check for reused id")
 )
 
 type tcCoord struct {
-	queue   map[string]*pb.QueueEntry
-	backend be_rpc.TCServiceClient
-}
-
-func newTcCoord(backend be_rpc.TCServiceClient) *tcCoord {
-	return &tcCoord{
-		queue:   make(map[string]*pb.QueueEntry),
-		backend: backend,
-	}
+	temporalClient client.Client
 }
 
 func (server *tcCoord) EnqueueDir(ctx context.Context, req *connect.Request[pb.EnqueueDirRequest]) (*connect.Response[pb.EnqueueDirResponse], error) {
-	if _, alreadyExists := server.queue[req.Msg.Id]; alreadyExists {
+	countReq := &workflowservice.CountWorkflowExecutionsRequest{
+		Query: fmt.Sprintf("WorkflowType = '%s' AND dir = '%s' AND WorkflowId = '%s'", "Directory", req.Msg.Dir, req.Msg.Id),
+	}
+	countResp, err := server.temporalClient.CountWorkflow(ctx, countReq)
+	if err != nil {
+		log.Print(err)
+		return nil, errCouldNotCheckForReusedId
+	}
+	if countResp.GetCount() > 0 {
 		return nil, errReusedId
 	}
-	server.queue[req.Msg.Id] = &pb.QueueEntry{
-		Id:  req.Msg.Id,
+
+	opts := client.StartWorkflowOptions{
+		ID:                    req.Msg.Id,
+		WorkflowIDReusePolicy: temporal_enums.WORKFLOW_ID_REUSE_POLICY_REJECT_DUPLICATE,
+		TypedSearchAttributes: temporal.NewSearchAttributes(workflows.DirKey.ValueSet(req.Msg.Dir)),
+	}
+	input := &workflows.DirectoryInput{
 		Dir: req.Msg.Dir,
 	}
-	_, err := server.backend.StartAsyncTranscode(ctx, &connect.Request[be_pb.StartAsyncTranscodeRequest]{
-		Msg: &be_pb.StartAsyncTranscodeRequest{
-			Name:   req.Msg.Id,
-			InPath: req.Msg.Dir, // TODO: set InPath correctly.
-			// TODO: set OutPath
-			// TODO: set profile
-		},
-	})
-	return &connect.Response[pb.EnqueueDirResponse]{}, err
+	_, err = server.temporalClient.ExecuteWorkflow(ctx, opts, workflows.Directory, input)
+
+	return nil, err
 }
 
 func (server *tcCoord) GetQueue(ctx context.Context, req *connect.Request[pb.GetQueueRequest]) (*connect.Response[pb.GetQueueResponse], error) {
-	var queue []*pb.QueueEntry
-	for _, entry := range server.queue {
-		queue = append(queue, entry)
+	tReq := &workflowservice.ListWorkflowExecutionsRequest{
+		PageSize: 1000,
+		Query:    fmt.Sprintf("WorkflowType = '%s'", "Directory"),
 	}
-	return &connect.Response[pb.GetQueueResponse]{
-		Msg: &pb.GetQueueResponse{
-			Queue: queue,
-		},
-	}, nil
+	tResp, err := server.temporalClient.ListWorkflow(ctx, tReq)
+	if err != nil {
+		return nil, err
+	}
+	if len(tResp.NextPageToken) > 0 {
+		return nil, errQueueTooLarge
+	}
+	resp := &pb.GetQueueResponse{}
+	for _, e := range tResp.Executions {
+		dirPayload, ok := e.SearchAttributes.IndexedFields["dir"]
+		if !ok {
+			return nil, errExecutionMissingDir
+		}
+		entry := &pb.QueueEntry{
+			Id: e.Execution.WorkflowId,
+		}
+		if err := temporal_converter.GetDefaultDataConverter().FromPayload(dirPayload, &entry.Dir); err != nil {
+			return nil, errExecutionCorruptDir
+		}
+		resp.Queue = append(resp.Queue, entry)
+	}
+	return &connect.Response[pb.GetQueueResponse]{Msg: resp}, nil
 }

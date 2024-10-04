@@ -11,7 +11,9 @@ import (
 
 func main() {
 	// Create a new service instance
-	service := newTcCoord(nil)
+	service := &tcCoord{
+		temporalClient: nil, // TODO: real value.
+	}
 
 	// Set up the ConnectRPC server
 	mux := http.NewServeMux()

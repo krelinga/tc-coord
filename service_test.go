@@ -2,36 +2,33 @@ package main
 
 import (
 	"context"
-	"errors"
 	"testing"
-
-	"github.com/stretchr/testify/mock"
 
 	pb "buf.build/gen/go/krelinga/proto/protocolbuffers/go/krelinga/video/tccoord/v1"
 	"connectrpc.com/connect"
-	"github.com/google/go-cmp/cmp"
-	"github.com/krelinga/tc-coord/internal/mocks"
-	"google.golang.org/protobuf/testing/protocmp"
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
+	temporal_testsuite "go.temporal.io/sdk/testsuite"
 )
 
 func TestTcCoord(t *testing.T) {
-	mockBe := mocks.NewTCServiceClient(t)
-	mockBe.EXPECT().StartAsyncTranscode(mock.Anything, mock.Anything).Return(nil, nil).Maybe()
-
 	// Create a new service instance
-	service := newTcCoord(mockBe)
+	devTempOpts := temporal_testsuite.DevServerOptions{}
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	devTemp, err := temporal_testsuite.StartDevServer(ctx, devTempOpts)
+	require.NoError(t, err)
+	service := &tcCoord{
+		temporalClient: devTemp.Client(),
+	}
 
 	t.Run("EmptyQueue", func(t *testing.T) {
 		resp, err := service.GetQueue(context.Background(), &connect.Request[pb.GetQueueRequest]{})
 		if err != nil {
 			t.Fatalf("GetQueue failed: %v", err)
 		}
-		expected := &pb.GetQueueResponse{
-			Queue: []*pb.QueueEntry{},
-		}
-		if !cmp.Equal(resp.Msg, expected, protocmp.Transform()) {
-			t.Errorf("GetQueue returned unexpected response: %v", cmp.Diff(resp, expected, protocmp.Transform()))
-		}
+		expected := &pb.GetQueueResponse{}
+		assert.Equal(t, expected, resp.Msg)
 	})
 
 	t.Run("EnqueueDirUniqueId", func(t *testing.T) {
@@ -57,9 +54,7 @@ func TestTcCoord(t *testing.T) {
 				},
 			},
 		}
-		if !cmp.Equal(resp.Msg, expected, protocmp.Transform()) {
-			t.Errorf("GetQueue returned unexpected response: %v", cmp.Diff(resp, expected, protocmp.Transform()))
-		}
+		assert.Equal(t, expected, resp.Msg)
 	})
 
 	t.Run("EnqueueDirReusedId", func(t *testing.T) {
@@ -69,8 +64,6 @@ func TestTcCoord(t *testing.T) {
 				Dir: "testdir",
 			},
 		})
-		if !errors.Is(err, errReusedId) {
-			t.Errorf("EnqueueDir did not return expected error: %v", err)
-		}
+		assert.ErrorIs(t, err, errReusedId)
 	})
 }
