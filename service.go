@@ -48,6 +48,7 @@ func (server *tcCoord) EnqueueDir(ctx context.Context, req *connect.Request[pb.E
 		ID:                    req.Msg.Id,
 		WorkflowIDReusePolicy: temporal_enums.WORKFLOW_ID_REUSE_POLICY_REJECT_DUPLICATE,
 		TypedSearchAttributes: temporal.NewSearchAttributes(workflows.DirKey.ValueSet(req.Msg.Dir)),
+		TaskQueue:             workflows.TaskQueue,
 	}
 	input := &workflows.DirectoryInput{
 		Dir: req.Msg.Dir,
@@ -80,6 +81,14 @@ func (server *tcCoord) GetQueue(ctx context.Context, req *connect.Request[pb.Get
 		}
 		if err := temporal_converter.GetDefaultDataConverter().FromPayload(dirPayload, &entry.Dir); err != nil {
 			return nil, errExecutionCorruptDir
+		}
+		switch e.Status {
+			case temporal_enums.WORKFLOW_EXECUTION_STATUS_COMPLETED:
+				entry.Status = pb.QueueEntryStatus_QUEUE_ENTRY_STATUS_DONE
+			case temporal_enums.WORKFLOW_EXECUTION_STATUS_RUNNING:
+				entry.Status = pb.QueueEntryStatus_QUEUE_ENTRY_STATUS_PROCESSING
+			default:
+				entry.Status = pb.QueueEntryStatus_QUEUE_ENTRY_STATUS_ERROR
 		}
 		resp.Queue = append(resp.Queue, entry)
 	}

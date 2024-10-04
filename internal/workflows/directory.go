@@ -3,8 +3,9 @@ package workflows
 import (
 	"time"
 
-	"go.temporal.io/sdk/workflow"
 	"github.com/krelinga/tc-coord/internal/activities"
+	"go.temporal.io/sdk/worker"
+	"go.temporal.io/sdk/workflow"
 )
 
 type DirectoryInput struct {
@@ -25,4 +26,9 @@ func Directory(ctx workflow.Context, input *DirectoryInput) error {
 		return err
 	}
 	return nil
+}
+
+func RegisterDirectory(w worker.Worker) {
+	registerOpts := workflow.RegisterOptions{Name: "Directory"}
+	w.RegisterWorkflowWithOptions(Directory, registerOpts)
 }

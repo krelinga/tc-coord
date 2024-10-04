@@ -6,7 +6,7 @@ toolchain go1.23.1
 
 require (
 	buf.build/gen/go/krelinga/proto/connectrpc/go v1.16.2-20240914043159-8e4e49d91022.1
-	buf.build/gen/go/krelinga/proto/protocolbuffers/go v1.34.2-20240914043159-8e4e49d91022.2
+	buf.build/gen/go/krelinga/proto/protocolbuffers/go v1.34.2-20241004053441-df97e5ad56f4.2
 	connectrpc.com/connect v1.16.2
 )
 

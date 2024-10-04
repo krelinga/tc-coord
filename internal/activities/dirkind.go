@@ -4,6 +4,8 @@ import (
 	"context"
 
 	"github.com/krelinga/go-lib/video"
+	"go.temporal.io/sdk/activity"
+	"go.temporal.io/sdk/worker"
 )
 
 type DirKindInput struct {
@@ -22,4 +24,9 @@ func DirKind(ctx context.Context, input *DirKindInput) (*DirKindOutput, error) {
 	return &DirKindOutput{
 		Kind: kind,
 	}, nil
+}
+
+func RegisterDirKind(w worker.Worker) {
+	registerOpts := activity.RegisterOptions{Name: "DirKind"}
+	w.RegisterActivityWithOptions(DirKind, registerOpts)
 }

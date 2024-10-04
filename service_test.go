@@ -9,9 +9,11 @@ import (
 	"os/exec"
 	"path/filepath"
 	"testing"
+	"time"
 
 	pb "buf.build/gen/go/krelinga/proto/protocolbuffers/go/krelinga/video/tccoord/v1"
 	"connectrpc.com/connect"
+	"github.com/krelinga/tc-coord/internal/workers"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"go.temporal.io/sdk/client"
@@ -52,7 +54,15 @@ func getFreePort() (port int, err error) {
 func TestTcCoord(t *testing.T) {
 	tempDir, err := os.MkdirTemp("", "tc-coord-test")
 	require.NoError(t, err)
+	// Wait to remove the temp dir until the end of the test
 	defer os.RemoveAll(tempDir)
+
+	// Always wait for any lingering assert failures from spawned worker goroutine to show up
+	// before existing this function.  Only the test temporary directory outlives this.
+	workerDone := make(chan struct{})
+	defer func() {
+		<-workerDone
+	}()
 
 	port, err := getFreePort()
 	require.NoError(t, err)
@@ -67,17 +77,25 @@ func TestTcCoord(t *testing.T) {
 			HostPort: hostport,
 		},
 	}
+	// Most cleanup is tied to this context; cleaning this up is the first defer to actually run.
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 	devTemp, err := temporal_testsuite.StartDevServer(ctx, devTempOpts)
 	require.NoError(t, err)
-	defer devTemp.Stop()
+	context.AfterFunc(ctx, func() {devTemp.Stop()})
 
 	temporalBinPath, err := getTemporalBinaryPath(tempDir)
 	require.NoError(t, err)
 	t.Log("temporal binary path:", temporalBinPath)
 	err = initCustomSearchAttribute(ctx, temporalBinPath, hostport)
 	require.NoError(t, err)
+
+	stopWorker := make(chan interface{})
+	context.AfterFunc(ctx, func() {close(stopWorker)})
+	go func() {
+		defer close(workerDone)
+		assert.NoError(t, workers.RunFullWorker(devTemp.Client(), stopWorker))
+	}()
 
 	service := &tcCoord{
 		temporalClient: devTemp.Client(),
@@ -103,19 +121,21 @@ func TestTcCoord(t *testing.T) {
 			t.Fatalf("EnqueueDir failed: %v", err)
 		}
 
-		resp, err := service.GetQueue(context.Background(), &connect.Request[pb.GetQueueRequest]{})
-		if err != nil {
-			t.Fatalf("GetQueue failed: %v", err)
-		}
-		expected := &pb.GetQueueResponse{
-			Queue: []*pb.QueueEntry{
-				{
-					Id:  "testid",
-					Dir: "testdir",
+		workflowFinished := func(t *assert.CollectT) {
+			resp, err := service.GetQueue(context.Background(), &connect.Request[pb.GetQueueRequest]{})
+			assert.NoError(t, err)
+			expected := &pb.GetQueueResponse{
+				Queue: []*pb.QueueEntry{
+					{
+						Id:     "testid",
+						Dir:    "testdir",
+						Status: pb.QueueEntryStatus_QUEUE_ENTRY_STATUS_DONE,
+					},
 				},
-			},
+			}
+			assert.Equal(t, expected, resp.Msg)
 		}
-		assert.Equal(t, expected, resp.Msg)
+		assert.EventuallyWithT(t, workflowFinished, 30*time.Second, 1*time.Second)
 	})
 
 	t.Run("EnqueueDirReusedId", func(t *testing.T) {
