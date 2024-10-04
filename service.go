@@ -33,7 +33,7 @@ type tcCoord struct {
 
 func (server *tcCoord) EnqueueDir(ctx context.Context, req *connect.Request[pb.EnqueueDirRequest]) (*connect.Response[pb.EnqueueDirResponse], error) {
 	countReq := &workflowservice.CountWorkflowExecutionsRequest{
-		Query: fmt.Sprintf("WorkflowType = '%s' AND dir = '%s' AND WorkflowId = '%s'", "Directory", req.Msg.Dir, req.Msg.Id),
+		Query: fmt.Sprintf("WorkflowType = '%s' AND WorkflowId = '%s'", "Directory", req.Msg.Id),
 	}
 	countResp, err := server.temporalClient.CountWorkflow(ctx, countReq)
 	if err != nil {
@@ -83,12 +83,12 @@ func (server *tcCoord) GetQueue(ctx context.Context, req *connect.Request[pb.Get
 			return nil, errExecutionCorruptDir
 		}
 		switch e.Status {
-			case temporal_enums.WORKFLOW_EXECUTION_STATUS_COMPLETED:
-				entry.Status = pb.QueueEntryStatus_QUEUE_ENTRY_STATUS_DONE
-			case temporal_enums.WORKFLOW_EXECUTION_STATUS_RUNNING:
-				entry.Status = pb.QueueEntryStatus_QUEUE_ENTRY_STATUS_PROCESSING
-			default:
-				entry.Status = pb.QueueEntryStatus_QUEUE_ENTRY_STATUS_ERROR
+		case temporal_enums.WORKFLOW_EXECUTION_STATUS_COMPLETED:
+			entry.Status = pb.QueueEntryStatus_QUEUE_ENTRY_STATUS_DONE
+		case temporal_enums.WORKFLOW_EXECUTION_STATUS_RUNNING:
+			entry.Status = pb.QueueEntryStatus_QUEUE_ENTRY_STATUS_PROCESSING
+		default:
+			entry.Status = pb.QueueEntryStatus_QUEUE_ENTRY_STATUS_ERROR
 		}
 		resp.Queue = append(resp.Queue, entry)
 	}

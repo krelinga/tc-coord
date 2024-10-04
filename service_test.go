@@ -82,7 +82,7 @@ func TestTcCoord(t *testing.T) {
 	defer cancel()
 	devTemp, err := temporal_testsuite.StartDevServer(ctx, devTempOpts)
 	require.NoError(t, err)
-	context.AfterFunc(ctx, func() {devTemp.Stop()})
+	context.AfterFunc(ctx, func() { devTemp.Stop() })
 
 	temporalBinPath, err := getTemporalBinaryPath(tempDir)
 	require.NoError(t, err)
@@ -91,7 +91,7 @@ func TestTcCoord(t *testing.T) {
 	require.NoError(t, err)
 
 	stopWorker := make(chan interface{})
-	context.AfterFunc(ctx, func() {close(stopWorker)})
+	context.AfterFunc(ctx, func() { close(stopWorker) })
 	go func() {
 		defer close(workerDone)
 		assert.NoError(t, workers.RunFullWorker(devTemp.Client(), stopWorker))
@@ -110,11 +110,13 @@ func TestTcCoord(t *testing.T) {
 		assert.Equal(t, expected, resp.Msg)
 	})
 
+	testId := t.Name()
+
 	t.Run("EnqueueDirUniqueId", func(t *testing.T) {
 		_, err := service.EnqueueDir(context.Background(), &connect.Request[pb.EnqueueDirRequest]{
 			Msg: &pb.EnqueueDirRequest{
-				Id:  "testid",
-				Dir: "testdir",
+				Id:  testId,
+				Dir: tempDir,
 			},
 		})
 		if err != nil {
@@ -127,8 +129,8 @@ func TestTcCoord(t *testing.T) {
 			expected := &pb.GetQueueResponse{
 				Queue: []*pb.QueueEntry{
 					{
-						Id:     "testid",
-						Dir:    "testdir",
+						Id:     testId,
+						Dir:    tempDir,
 						Status: pb.QueueEntryStatus_QUEUE_ENTRY_STATUS_DONE,
 					},
 				},
@@ -141,7 +143,7 @@ func TestTcCoord(t *testing.T) {
 	t.Run("EnqueueDirReusedId", func(t *testing.T) {
 		_, err := service.EnqueueDir(context.Background(), &connect.Request[pb.EnqueueDirRequest]{
 			Msg: &pb.EnqueueDirRequest{
-				Id:  "testid",
+				Id:  testId,
 				Dir: "testdir",
 			},
 		})
