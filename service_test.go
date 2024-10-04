@@ -51,6 +51,7 @@ func getFreePort() (port int, err error) {
 	return
 }
 
+// TODO: this test is flaky, you can reliably recreate the failure by running with -count=10.
 func TestTcCoord(t *testing.T) {
 	tempDir, err := os.MkdirTemp("", "tc-coord-test")
 	require.NoError(t, err)
